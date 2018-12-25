@@ -1,0 +1,45 @@
+---
+# tasks file for kube_install
+- name: Adding docker repo...
+  shell: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -"
+- shell: "add-apt-repository    \"deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable\""
+
+- name: Adding Kubernetes repo...
+  shell: "curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -"
+
+- name: Configuring kubernetes repo...
+  lineinfile:
+    dest: /etc/apt/sources.list.d/kubernetes.list
+    line: 'deb https://apt.kubernetes.io/ kubernetes-xenial main'
+    create: yes
+
+- name: Update all packages to the latest version...
+  apt:
+    upgrade: dist 
+
+- name: Installing Docker, Kubeadm, Kubelet, and Kubectl...
+  apt:
+    name: "{{ packages}}"
+  vars:
+    packages:
+    - docker-ce=18.06.1~ce~3-0~ubuntu
+    - kubelet=1.12.2-00
+    - kubeadm=1.12.2-00
+    - kubectl=1.12.2-00
+
+- name: Enabling net.bridge.bridge-nf-call-iptables...
+  sysctl: 
+    name: net.bridge.bridge-nf-call-iptables
+    value: 1
+    sysctl_file: /etc/sysctl.conf
+    reload: yes
+
+- name: Configuring Master server...
+  shell: "kubeadm init --pod-network-cidr=10.244.0.0/16"
+- shell: "mkdir -p /root/.kube"
+- shell: "cp -i /etc/kubernetes/admin.conf /root/.kube/config"
+- shell: "chown root:root /root/.kube/config"
+
+- name: Install the flannel networking plugin in the cluster...
+  shell: "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml"
+ 
