@@ -1,0 +1,4 @@
+---
+kubversion: 1.13.5-00
+docker_version: 18.06.1~ce~3-0~ubuntu
+pod_range: 10.244.0.0/16

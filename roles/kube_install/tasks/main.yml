@@ -19,27 +19,46 @@
 
 - name: Installing Docker, Kubeadm, Kubelet, and Kubectl...
   apt:
-    name: "{{ packages}}"
-  vars:
-    packages:
-    - docker-ce=18.06.1~ce~3-0~ubuntu
-    - kubelet=1.12.2-00
-    - kubeadm=1.12.2-00
-    - kubectl=1.12.2-00
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker-ce={{ docker_version }}
+    - kubelet={{ kubversion }}
+    - kubeadm={{ kubversion }}
+    - kubectl={{ kubversion }}
+
+- name: Holding package version...
+  shell: "apt-mark hold docker-ce kubelet kubeadm kubectl"
 
 - name: Enabling net.bridge.bridge-nf-call-iptables...
   sysctl: 
-    name: net.bridge.bridge-nf-call-iptables
+    name: "{{ item }}"
     value: 1
     sysctl_file: /etc/sysctl.conf
     reload: yes
+  with_items:
+    - net.bridge.bridge-nf-call-iptables
+    - net.ipv4.ip_forward
+
 
 - name: Configuring Master server...
-  shell: "kubeadm init --pod-network-cidr=10.244.0.0/16"
+  shell: "kubeadm init --pod-network-cidr={{ pod_range }}"
+  when: inventory_hostname in groups['master']
+  register: kube_init_output
+
 - shell: "mkdir -p /root/.kube"
+  when: inventory_hostname in groups['master']
+
 - shell: "cp -i /etc/kubernetes/admin.conf /root/.kube/config"
+  when: inventory_hostname in groups['master']
+
 - shell: "chown root:root /root/.kube/config"
+  when: inventory_hostname in groups['master']
 
 - name: Install the flannel networking plugin in the cluster...
   shell: "kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml"
+  when: inventory_hostname in groups['master']
+
+- name: Execute following command on worker node...
+  debug: msg="{{ kube_init_output }}"
  

@@ -1,0 +1,6 @@
+[master]
+1-kubemaster
+
+[node]
+1-kubenode1
+1-kubenode2
